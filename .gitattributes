@@ -1,0 +1,2 @@
+# Shell scripts, the Dockerfile and Compose must keep LF line endings on every system
+* text=auto eol=lf

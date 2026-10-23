@@ -1,0 +1,48 @@
+# NightCoop hub — your own server (README.md / README.ru.md next to this file).
+#
+#   cp .env.example .env        # optional: port, threads, names
+#   docker compose up -d --build
+#   docker compose logs hub | grep fingerprint     # give players "<your address>#<fingerprint>"
+#
+# Settings come from .env next to this file (see .env.example); all have defaults.
+services:
+  hub:
+    image: ${NIGHTCOOP_IMAGE:-nightcoop-hub:local}
+    build:
+      context: ../../..
+      dockerfile: tools/hub/docker/Dockerfile
+    container_name: nightcoop-hub
+    restart: unless-stopped
+    # UDP straight to the hub: it must see players' real addresses (it tells each player how it sees him — that is how two
+    # players behind home routers find a direct path), and Docker's NAT would cost CPU on every datagram
+    network_mode: host
+    command: >-
+      ${NIGHTCOOP_PORT:-47800}
+      --shards ${NIGHTCOOP_SHARDS:-auto}
+      --max-clients ${NIGHTCOOP_MAX_CLIENTS:-512}
+      --sign-key-auto /data/hub-sign.key
+      --hub-name ${NIGHTCOOP_HUB_NAME:-localhost}
+      --region ${NIGHTCOOP_REGION:-home}
+      ${NIGHTCOOP_EXTRA_ARGS:-}
+    volumes:
+      - hub-data:/data
+    # The hub writes nothing but its key (once, into /data); everything else is read-only
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 128
+    ulimits:
+      nofile: 4096
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  # The hub's key: back it up (docker run --rm -v nightcoop-hub-data:/data:ro -v "$PWD":/backup debian:13-slim
+  # cp /data/hub-sign.key /backup/). Lost key — new fingerprint, players must update theirs
+  hub-data:
+    name: nightcoop-hub-data
