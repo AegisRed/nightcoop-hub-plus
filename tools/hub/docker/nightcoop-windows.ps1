@@ -31,6 +31,20 @@ function Parse-Peers([string]$Value) {
 }
 function Install-Firewall([string]$Peers) {
     $validated=@(Parse-Peers $Peers)
+    # A second one-click run must not accidentally erase previously entered Radmin peer IPs.
+    if($validated.Count -eq 0) {
+        $previous=Get-NetFirewallRule -Name $script:LanRule -ErrorAction SilentlyContinue
+        if($previous) {
+            $oldAddresses=@(($previous | Get-NetFirewallAddressFilter).RemoteAddress)
+            foreach($addr in $oldAddresses) {
+                $ip=$null
+                if([Net.IPAddress]::TryParse([string]$addr,[ref]$ip) -and
+                   $ip.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork) {
+                    if($validated -notcontains $ip.ToString()) { $validated+= $ip.ToString() }
+                }
+            }
+        }
+    }
     Say 'Two Windows Firewall rules on THIS computer:' Cyan
     Say '1. Hub: inbound UDP 47800,47810-47873; Private profile.' Yellow
     Say '2. LAN: inbound UDP 47800,47810-47824; LocalSubnet, any profile.' Yellow
