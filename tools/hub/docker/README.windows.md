@@ -1,6 +1,6 @@
 # Windows / Docker Desktop quick setup (LAN and Radmin VPN)
 
-For Windows 10/11 with Docker Desktop (Linux containers), use the guided PowerShell menu in this folder:
+For Windows 10/11 with Docker Desktop (Linux containers), double-click **`START-WINDOWS.cmd`** in this folder. Alternatively, run the guided PowerShell menu:
 
 ~~~powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\nightcoop-windows.ps1
@@ -16,6 +16,6 @@ The installer creates:
 - **NightCoop Hub UDP (managed)**: inbound UDP 47800,47810–47873 on Private networks.
 - **NightCoop LAN UDP (managed)**: inbound UDP 47800,47810–47824 from LocalSubnet and optional exact Radmin peer IPs, on Any profile.
 
-Menu **3** displays addresses and examples, **4** follows Docker logs, **5** writes a diagnostic text report (review private IPs before sharing), and **6** stops the hub without deleting its signing key.
+Menu **3** displays addresses and examples, **4** follows Docker logs, **5** writes a diagnostic text report (review private IPs before sharing), and **6** stops the hub without deleting its signing key. Item **7** removes only the two helper-managed firewall rules (with UAC).
 
 **Caveats:** Radmin VPN peers must be on the same Radmin network. Reachability depends on VPN routes, Windows Firewall and Docker Desktop; it is not guaranteed. Docker Desktop's bridge NAT can interfere with direct hole punching (the hub can relay when needed). Published ports may be exposed on all host interfaces and can bypass some host firewall restrictions: use on trusted LAN/VPN only; do not forward these ports from the public internet casually. See the complete [Russian Windows guide](README.windows.ru.md) or [Linux/VPS guide](README.md).
