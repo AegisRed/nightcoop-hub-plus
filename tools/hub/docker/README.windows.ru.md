@@ -5,8 +5,8 @@
 ## Быстрый старт — компьютер хоста
 
 1. Установите и **запустите Docker Desktop** с Linux containers. Дождитесь состояния «Engine running».
-2. Скачайте репозиторий (кнопка **Code → Download ZIP**) и распакуйте его. Откройте PowerShell в папке `tools\hub\docker`.
-3. Запустите локальный помощник:
+2. Скачайте репозиторий (кнопка **Code → Download ZIP**) и распакуйте его. Откройте папку `tools\hub\docker`.
+3. **Дважды нажмите `START-WINDOWS.cmd`** — откроется удобное консольное меню. Если запуск `.cmd` недоступен, откройте PowerShell в этой папке и введите:
 
    ~~~powershell
    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\nightcoop-windows.ps1
@@ -76,6 +76,7 @@ docker compose -f docker-compose.yml -f docker-compose.windows.yml up -d --build
 - **4** — смотреть живой журнал Docker (`Ctrl+C` для выхода).
 - **5** — сохранить `nightcoop-diagnostics-ДАТА.txt` в текущую папку: версии/сеть, состояние двух правил, `docker compose ps` и последние 200 строк журнала. **Проверьте и скройте личные IP/данные сессий перед публикацией.**
 - **6** — остановить контейнер. Ключ хаба остаётся в Docker-томе `nightcoop-hub-data`; его отпечаток не меняется.
+- **7** — удалить только две созданные помощником Firewall-правила (запрос UAC).
 
 Типичные причины:
 
