@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - feat/windows-lan-vpn-setup
+      - main
     paths:
       - 'tools/hub/docker/**'
       - '.github/workflows/windows-setup-check.yml'
