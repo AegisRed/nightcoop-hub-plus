@@ -32,6 +32,10 @@ button.primary{background:#1a5968;color:#eeffff;border-color:#3a99a8}button.ghos
 .loghead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.loghead h2{margin-right:auto}.loghead button{padding:7px 11px;font-size:12px}
 pre{margin:0;background:#080f1b;border:1px solid #263950;border-radius:12px;color:#bed1e7;font:12px/1.65 Consolas,"Cascadia Code",monospace;white-space:pre-wrap;word-break:break-word;max-height:440px;overflow:auto;padding:18px}
 .logwrap{padding:17px}.notice{border-left:3px solid var(--amber);background:#1e2836;padding:11px 15px;font-size:12px;color:#d6c6a7;margin-top:17px;border-radius:7px}
+.issue-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:16px 0}
+.issue{border:1px solid #735443;background:#302638;border-radius:12px;padding:13px 15px}
+.issue strong{display:block;color:var(--amber);margin-bottom:4px;font-size:13px}
+.issue p{font-size:12px;color:#d0bfb5}
 .footer{font-size:12px;color:#7996b2;margin-top:28px}
 #toast{position:fixed;bottom:24px;right:24px;background:#276d60;color:white;padding:10px 16px;border-radius:9px;box-shadow:0 10px 28px #0008;opacity:0;pointer-events:none;transition:.2s}
 @media(max-width:920px){.stats{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}.card{min-height:auto}}
@@ -53,6 +57,7 @@ pre{margin:0;background:#080f1b;border:1px solid #263950;border-radius:12px;colo
 </section>
 
 <div class="panel info"><span>ⓘ</span><p id="state-note">Эта панель читает состояние Docker и последние логи, но не меняет игровые файлы и не создаёт коды сессий. Сначала запустите NightCoop Hub.</p></div>
+<div id="issues" class="issue-grid" aria-live="polite"></div>
 
 <div class="sectionhead"><div><h2>Адреса для подключения</h2><p>Здесь показан адрес <strong>хоста</strong>. Друзья не должны использовать 127.0.0.1.</p></div></div>
 <section class="cards">
@@ -148,6 +153,30 @@ function renderAddresses() {
     setCopy('copy-'+prefix+'-invite',good && code ? invite : '');
   }
 }
+function renderDiagnosis(s) {
+  const found=[];
+  const add=(title,detail)=>{if(!found.some(x=>x.title===title))found.push({title,detail})};
+  if(!s.running) add('Хаб не запущен','Запустите INSTALL-WINDOWS.cmd или пункт 1 консольного меню.');
+  if(s.running&&!s.udpPublished) add('UDP 47800 не опубликован','Проверьте Docker Compose и занят ли порт другим процессом.');
+  if(s.firewall&&(!s.firewall.hub||!s.firewall.lan)) add('Не все правила Firewall установлены','На ПК хоста запустите установщик или пункт 2 меню.');
+  const text=state.logText.toLowerCase();
+  if(/protocol mismatch|guest has game protocol/.test(text))
+    add('Версии NightCoop не совпадают','Хост и гость используют разные версии игрового протокола. Сверьте сборки NightCoop на обоих ПК.');
+  if(/unknown session|no such session/.test(text))
+    add('Неизвестный код сессии','Проверьте настоящий код из игры, отпечаток и адрес нужного хаба.');
+  if(/cannot bind port|address already in use/.test(text))
+    add('Порт занят','Возможно, уже запущен другой хаб или процесс на том же UDP-порту.');
+  if(/session is full|hub is full/.test(text))
+    add('Лимит подключений','Сессия или хаб переполнены; проверьте количество игроков и настройки лимитов.');
+  const area=ui('issues'); area.replaceChildren();
+  for(const x of found.slice(0,6)){
+    const card=document.createElement('div'); card.className='issue';
+    const title=document.createElement('strong'); title.textContent=x.title;
+    const detail=document.createElement('p'); detail.textContent=x.detail;
+    card.append(title,detail);area.appendChild(card);
+  }
+}
+
 function renderLogs() {
   const rows=state.logText.split(/\r?\n/);
   const errors=rows.filter(x=>warnPattern.test(x));
@@ -177,7 +206,7 @@ async function refresh() {
     if(!state.lanTouched && s.lan && s.lan.length) ui('lan-ip').value=s.lan[0].ip;
     if(!state.vpnTouched && s.radmin && s.radmin.length) ui('vpn-ip').value=s.radmin[0].ip;
     ui('updated').textContent='Обновлено '+new Date().toLocaleTimeString('ru-RU');
-    renderAddresses(); renderLogs();
+    renderAddresses(); renderLogs(); renderDiagnosis(s);
   } catch(err) {
     ui('hub-status').textContent='Нет связи';
     ui('hub-status').className='value bad';
