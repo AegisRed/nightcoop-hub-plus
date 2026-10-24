@@ -1,0 +1,36 @@
+name: Windows LAN/VPN setup checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feat/windows-lan-vpn-setup
+    paths:
+      - 'tools/hub/docker/**'
+      - '.github/workflows/windows-setup-check.yml'
+
+jobs:
+  powershell-syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Windows helper without running it
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            'tools/hub/docker/nightcoop-windows.ps1',
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.ToString() }
+            exit 1
+          }
+  docker-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Windows Docker Compose overlay
+        run: docker compose -f tools/hub/docker/docker-compose.yml -f tools/hub/docker/docker-compose.windows.yml config --quiet
