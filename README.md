@@ -68,7 +68,7 @@ On the host, open `http://127.0.0.1:47990` or use management menu **8**:
 
 The dashboard is a local companion served by `dashboard.ps1` over a TCP listener bound to **127.0.0.1 only**. It has **read-only GET endpoints** and does not expose a Docker socket or your hub's private signing key. There is no remote admin login: friends should never access this page. Menu **9** stops the dashboard without stopping the hub.
 
-It reports *hub-visible* problems (ports, protocol mismatch, refused joins, startup errors). It cannot see errors inside the encrypted game session or identify which gameplay mods are missing on someone else's PC.
+It reports *hub-visible* problems (ports, protocol mismatch, refused joins, startup errors). It cannot see errors inside the encrypted game session or identify which gameplay mods are missing on someone else's PC. A future **opt-in offline mod manifest exporter/comparator** could compare files on two PCs without modifying the closed-source game DLL; see the roadmap.
 
 ## Network ports and Docker
 
