@@ -12,6 +12,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\nightcoop-windows.ps1
 2. **On the second PC:** Docker is not needed unless that PC also hosts a hub. Double-click **`INSTALL-GUEST-WINDOWS.cmd`** to install the two Firewall rules **on that PC** (UAC, no Docker). For optional exact Radmin peer addresses use `START-WINDOWS.cmd` → item **2**. The script cannot remotely change another computer.
 3. **In the game:** host enters `127.0.0.1#FINGERPRINT` when adding the own server. Guests use the real session invite from Cyberpunk but replace only the host address between `@` and `#` with the **host's LAN IPv4** or **host's Radmin VPN IPv4**. Keep the session code and fingerprint unchanged. Examples shown in the console are examples, not generated invites.
 
+## Local read-only host dashboard
+
+After `INSTALL-WINDOWS.cmd`, the host's browser opens **http://127.0.0.1:47990**. Menu item **8** reopens it; **9** stops only the dashboard.
+
+It shows hub/Docker status, UDP publishing, managed firewall rule status, the fingerprint, LAN and Radmin VPN address cards, copy buttons, recent Docker logs and explanations for common hub errors. Paste a **real game session code** in the browser to enable copy-ready per-network invitations; the dashboard does not generate sessions or save that code.
+
+The companion HTTP server binds only to **127.0.0.1**, has read-only endpoints and does not read the signing key or expose a Docker socket. Do not expose TCP 47990 to LAN/VPN/WAN. Installed Cyberpunk gameplay mods cannot be compared by this repository's hub alone; that requires client-side support. [Roadmap (RU)](../../../docs/ROADMAP.ru.md).
+
 The standalone Windows Compose file has **no `network_mode` field** and publishes `47800/udp` and `47810-47824/udp`. It defaults to four shards. Set `NIGHTCOOP_WINDOWS_SHARDS` to 1–16 if necessary; 47800 is fixed for this profile. The original Linux Compose file remains unchanged. Run Windows with `docker compose -f docker-compose.windows.yml up -d --build`.
 
 The installer creates:
