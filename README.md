@@ -12,8 +12,7 @@ This repository holds only what the hub is built from. The mod itself is not her
 ## Windows / Radmin VPN quick start
 
 On Windows with Docker Desktop, double-click `tools/hub/docker/INSTALL-WINDOWS.cmd` or read the guided [Windows setup](tools/hub/docker/README.windows.md)
-([по-русски](tools/hub/docker/README.windows.ru.md)). It switches the hub to published UDP
-ports, installs Windows Firewall rules with approval, and shows LAN/Radmin address examples
+([по-русски](tools/hub/docker/README.windows.ru.md)). It publishes UDP ports without `network_mode`, installs Windows Firewall rules with approval, and shows LAN/Radmin address examples
 in the console. The Linux `network_mode: host` setup below is unchanged.
 
 ## Quick start (Docker)
