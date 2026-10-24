@@ -1,0 +1,21 @@
+# Windows / Docker Desktop LAN and Radmin VPN profile.
+# Use together with docker-compose.yml:
+# docker compose -f docker-compose.yml -f docker-compose.windows.yml up -d --build
+#
+# Docker Desktop cannot use host networking together with published ports.
+# These fixed mappings support up to 16 total shards (entry + 15 redirect ports).
+# NIGHTCOOP_WINDOWS_SHARDS must be between 1 and 16 (default: 4).
+services:
+  hub:
+    network_mode: bridge
+    ports:
+      - "47800:47800/udp"
+      - "47810-47824:47810-47824/udp"
+    command: >-
+      47800
+      --shards ${NIGHTCOOP_WINDOWS_SHARDS:-4}
+      --max-clients ${NIGHTCOOP_MAX_CLIENTS:-512}
+      --sign-key-auto /data/hub-sign.key
+      --hub-name ${NIGHTCOOP_HUB_NAME:-localhost}
+      --region ${NIGHTCOOP_REGION:-home}
+      ${NIGHTCOOP_EXTRA_ARGS:-}
