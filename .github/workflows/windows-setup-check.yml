@@ -33,4 +33,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Windows Docker Compose overlay
-        run: docker compose -f tools/hub/docker/docker-compose.yml -f tools/hub/docker/docker-compose.windows.yml config --quiet
+        run: |
+          docker compose -f tools/hub/docker/docker-compose.windows.yml config --quiet
+          docker compose -f tools/hub/docker/docker-compose.windows.yml config --format json | jq -e '.services.hub.network_mode == null'
