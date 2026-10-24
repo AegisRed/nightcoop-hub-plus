@@ -134,161 +134,59 @@ function Help-Addresses {
     Say ''
 }
 function Refresh-DockerPath {
-    $machine=[Environment]::GetEnvironmentVariable('Path','Machine')
-    $user=[Environment]::GetEnvironmentVariable('Path','User')
-    $env:Path=$machine+';'+$user+';'+$env:Path
-    $folders=@(
+    $env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')+';'+$env:Path
+    foreach($folder in @(
         (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
         (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
-    )
-    foreach($folder in $folders) {
+    )) {
         if(Test-Path (Join-Path $folder 'docker.exe')) { $env:Path+=';'+$folder }
     }
 }
 function Ensure-Docker {
     Refresh-DockerPath
     if(-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-        Say 'Docker Desktop is not installed (or its CLI is missing).' Yellow
+        Say 'Docker Desktop CLI not found.' Yellow
         if(-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            throw 'Install Docker Desktop from https://docs.docker.com/desktop/setup/install/windows-install/ and run this installer again.'
+            throw 'Install Docker Desktop from https://docs.docker.com/desktop/setup/install/windows-install/ and rerun.'
         }
-        $choice=Read-Host 'Install Docker Desktop via Windows Package Manager (winget)? [y/N]'
-        if($choice -notmatch '^(y|yes|д|да)
-    Say 'Docker Desktop: default networking, UDP 47800 and 47810-47824 (no network_mode).' Cyan
-    Ensure-Docker
-    Check-Shards
-    $answer=Read-Host 'Install both firewall rules on this PC first? [Y/n]'
-    if($answer -notmatch '^(n|no|н|нет)$') {
-        $peers=Read-Host 'Optional Radmin peers IPv4 (comma-separated, Enter to skip)'
-        Install-Firewall $peers
-    }
-    Compose @('config','--quiet')
-    Compose @('up','-d','--build')
-    Say 'Hub started:' Green
-    Compose @('ps')
-    # The first-start key and its fingerprint can appear a moment after 'up -d'.
-    for($attempt=0;$attempt -lt 12;$attempt++) {
-        if(Fingerprint) { break }
-        Start-Sleep -Milliseconds 500
-    }
-    Help-Addresses
-}
-function Diagnostics {
-    $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
-    $path=Join-Path (Get-Location).Path "nightcoop-diagnostics-$stamp.txt"
-    $lines=New-Object 'System.Collections.Generic.List[string]'
-    $lines.Add('NightCoop diagnostic report '+(Get-Date -Format 'u'))
-    $lines.Add('OS: '+[Environment]::OSVersion.VersionString)
-    $lines.Add('=== IPv4 ===')
-    $lines.Add([string](Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-        Select-Object InterfaceAlias,IPAddress,PrefixLength | Format-Table -AutoSize | Out-String))
-    $lines.Add('=== Setup-created Windows Firewall rules ===')
-    foreach($name in @($script:HubRule,$script:LanRule)) {
-        $rule=Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue
-        if(-not $rule) { $lines.Add("$name is missing"); continue }
-        $lines.Add([string]($rule | Select-Object Name,Enabled,Profile,Direction,Action | Format-List | Out-String))
-        $lines.Add([string]($rule | Get-NetFirewallPortFilter | Format-List | Out-String))
-        $lines.Add([string]($rule | Get-NetFirewallAddressFilter | Format-List | Out-String))
-    }
-    if(Get-Command docker -ErrorAction SilentlyContinue) {
-        $args2=@('compose','-f',$script:Windows)
-        $lines.Add('=== Docker Compose status ===')
-        $lines.Add([string]((& docker @args2 ps 2>&1) | Out-String))
-        $lines.Add('=== Last 200 hub log lines ===')
-        $lines.Add([string]((& docker @args2 logs --no-color --tail 200 hub 2>&1) | Out-String))
-    } else {
-        $lines.Add('Docker CLI not found.')
-    }
-    $lines | Set-Content -Path $path -Encoding UTF8
-    Say ("Saved: $path") Green
-    Say 'Contains local/VPN IPs and possibly session data. Review before sharing.' Yellow
-}
-function Menu {
-    while($true) {
-        Say ''
-        Say '========== NIGHTCOOP WINDOWS ==========' Cyan
-        Say '1. Start/update hub (Docker Desktop + Firewall)' White
-        Say '2. Install BOTH Firewall rules on THIS PC (also for guest PC)' White
-        Say '3. LAN/Radmin address instructions for the game' White
-        Say '4. Live logs (Ctrl+C to exit)' White
-        Say '5. Export troubleshooting log' White
-        Say '6. Stop hub (preserve signing key)' White
-        Say '7. Remove the two helper-created Firewall rules' White
-        Say '0. Exit' Gray
-        $choice=Read-Host 'Choose'
-        try {
-            switch($choice) {
-                '1' { Start-Hub }
-                '2' {
-                    $peers=Read-Host 'Optional Radmin peers IPv4 (comma-separated, Enter to skip)'
-                    Install-Firewall $peers
-                }
-                '3' { Help-Addresses }
-                '4' { Compose @('logs','--tail','100','-f','hub') }
-                '5' { Diagnostics }
-                '6' { Compose @('stop','hub'); Say 'Stopped; key volume preserved.' Green }
-                '7' { Remove-Firewall }
-                '0' { return }
-                default { Say 'Unknown menu item.' Yellow }
-            }
-        } catch {
-            Say ('ERROR: '+$_.Exception.Message) Red
+        $choice=Read-Host 'Install Docker Desktop using winget? [y/N]'
+        if($choice -notin @('y','Y','yes','YES','д','да')) {
+            throw 'Docker installation was not approved.'
         }
-    }
-}
-try {
-    if($Action -eq 'firewall') { Install-Firewall $PeerIPs }
-    elseif($Action -eq 'remove') { Remove-Firewall }
-    elseif($Action -eq 'install') { One-Click }
-    else { Menu }
-} catch {
-    Say ('ERROR: '+$_.Exception.Message) Red
-    exit 1
-}
-) {
-            throw 'Docker Desktop is required. Installation was not approved.'
-        }
-        Say 'winget will show package/license terms. It may request UAC and a restart.' Yellow
+        Say 'Review the package license. Setup may need UAC or a Windows restart.' Yellow
         & winget install --id Docker.DockerDesktop --exact --source winget
-        if($LASTEXITCODE -ne 0) {
-            throw 'Docker installation failed. Check the winget output, then install Docker Desktop manually and retry.'
-        }
+        if($LASTEXITCODE -ne 0) { throw 'winget failed; install Docker Desktop manually and retry.' }
         Refresh-DockerPath
         if(-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-            throw 'Docker was installed but its CLI is not available yet. Restart Windows and run INSTALL-WINDOWS.cmd again.'
+            throw 'Docker installed, but CLI is not available. Restart Windows, then retry.'
         }
     }
     & docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null
     if($LASTEXITCODE -eq 0) { return }
-
-    Say 'Docker CLI found, but Docker Engine is not ready. Starting Docker Desktop...' Yellow
-    # Desktop CLI exists on newer Docker releases; use installed EXE on older ones.
+    Say 'Starting Docker Desktop. Accept first-run prompts if shown.' Yellow
     $started=$false
     & docker desktop start 2>&1 | Out-Null
     if($LASTEXITCODE -eq 0) { $started=$true }
     if(-not $started) {
-        $applications=@(
+        foreach($exe in @(
             (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
             (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
-        )
-        foreach($application in $applications) {
-            if(Test-Path $application) {
-                Start-Process -FilePath $application | Out-Null
+        )) {
+            if(Test-Path $exe) {
+                Start-Process -FilePath $exe | Out-Null
                 $started=$true
                 break
             }
         }
     }
-    if(-not $started) {
-        throw 'Unable to launch Docker Desktop. Start it manually, then rerun the installer.'
-    }
-    Say 'Waiting up to 120 seconds for Docker Engine. Accept any first-run prompts in Docker Desktop.' Cyan
+    if(-not $started) { throw 'Open Docker Desktop manually, then rerun.' }
+    Say 'Waiting up to two minutes for Docker Engine...' Cyan
     for($attempt=1;$attempt -le 60;$attempt++) {
         & docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null
-        if($LASTEXITCODE -eq 0) { Say 'Docker Engine is ready.' Green; return }
+        if($LASTEXITCODE -eq 0) { Say 'Docker is ready.' Green; return }
         Start-Sleep -Seconds 2
     }
-    throw 'Docker Engine did not become ready. Check WSL 2 / virtualization and Docker Desktop first-run setup, then rerun.'
+    throw 'Docker Engine not ready: check WSL 2 / virtualization and first-run setup, then rerun.'
 }
 function Check-Shards {
     $shards=$env:NIGHTCOOP_WINDOWS_SHARDS
@@ -296,100 +194,8 @@ function Check-Shards {
         $envFile=Join-Path $PSScriptRoot '.env'
         if(Test-Path $envFile) {
             foreach($line in (Get-Content $envFile)) {
-                if($line -match '^\s*NIGHTCOOP_WINDOWS_SHARDS\s*=\s*(.+?)\s*
-    Say 'Docker Desktop: default networking, UDP 47800 and 47810-47824 (no network_mode).' Cyan
-    Ensure-Docker
-    Check-Shards
-    $answer=Read-Host 'Install both firewall rules on this PC first? [Y/n]'
-    if($answer -notmatch '^(n|no|н|нет)$') {
-        $peers=Read-Host 'Optional Radmin peers IPv4 (comma-separated, Enter to skip)'
-        Install-Firewall $peers
-    }
-    Compose @('config','--quiet')
-    Compose @('up','-d','--build')
-    Say 'Hub started:' Green
-    Compose @('ps')
-    # The first-start key and its fingerprint can appear a moment after 'up -d'.
-    for($attempt=0;$attempt -lt 12;$attempt++) {
-        if(Fingerprint) { break }
-        Start-Sleep -Milliseconds 500
-    }
-    Help-Addresses
-}
-function Diagnostics {
-    $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
-    $path=Join-Path (Get-Location).Path "nightcoop-diagnostics-$stamp.txt"
-    $lines=New-Object 'System.Collections.Generic.List[string]'
-    $lines.Add('NightCoop diagnostic report '+(Get-Date -Format 'u'))
-    $lines.Add('OS: '+[Environment]::OSVersion.VersionString)
-    $lines.Add('=== IPv4 ===')
-    $lines.Add([string](Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-        Select-Object InterfaceAlias,IPAddress,PrefixLength | Format-Table -AutoSize | Out-String))
-    $lines.Add('=== Setup-created Windows Firewall rules ===')
-    foreach($name in @($script:HubRule,$script:LanRule)) {
-        $rule=Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue
-        if(-not $rule) { $lines.Add("$name is missing"); continue }
-        $lines.Add([string]($rule | Select-Object Name,Enabled,Profile,Direction,Action | Format-List | Out-String))
-        $lines.Add([string]($rule | Get-NetFirewallPortFilter | Format-List | Out-String))
-        $lines.Add([string]($rule | Get-NetFirewallAddressFilter | Format-List | Out-String))
-    }
-    if(Get-Command docker -ErrorAction SilentlyContinue) {
-        $args2=@('compose','-f',$script:Windows)
-        $lines.Add('=== Docker Compose status ===')
-        $lines.Add([string]((& docker @args2 ps 2>&1) | Out-String))
-        $lines.Add('=== Last 200 hub log lines ===')
-        $lines.Add([string]((& docker @args2 logs --no-color --tail 200 hub 2>&1) | Out-String))
-    } else {
-        $lines.Add('Docker CLI not found.')
-    }
-    $lines | Set-Content -Path $path -Encoding UTF8
-    Say ("Saved: $path") Green
-    Say 'Contains local/VPN IPs and possibly session data. Review before sharing.' Yellow
-}
-function Menu {
-    while($true) {
-        Say ''
-        Say '========== NIGHTCOOP WINDOWS ==========' Cyan
-        Say '1. Start/update hub (Docker Desktop + Firewall)' White
-        Say '2. Install BOTH Firewall rules on THIS PC (also for guest PC)' White
-        Say '3. LAN/Radmin address instructions for the game' White
-        Say '4. Live logs (Ctrl+C to exit)' White
-        Say '5. Export troubleshooting log' White
-        Say '6. Stop hub (preserve signing key)' White
-        Say '7. Remove the two helper-created Firewall rules' White
-        Say '0. Exit' Gray
-        $choice=Read-Host 'Choose'
-        try {
-            switch($choice) {
-                '1' { Start-Hub }
-                '2' {
-                    $peers=Read-Host 'Optional Radmin peers IPv4 (comma-separated, Enter to skip)'
-                    Install-Firewall $peers
-                }
-                '3' { Help-Addresses }
-                '4' { Compose @('logs','--tail','100','-f','hub') }
-                '5' { Diagnostics }
-                '6' { Compose @('stop','hub'); Say 'Stopped; key volume preserved.' Green }
-                '7' { Remove-Firewall }
-                '0' { return }
-                default { Say 'Unknown menu item.' Yellow }
-            }
-        } catch {
-            Say ('ERROR: '+$_.Exception.Message) Red
-        }
-    }
-}
-try {
-    if($Action -eq 'firewall') { Install-Firewall $PeerIPs }
-    elseif($Action -eq 'remove') { Remove-Firewall }
-    elseif($Action -eq 'install') { One-Click }
-    else { Menu }
-} catch {
-    Say ('ERROR: '+$_.Exception.Message) Red
-    exit 1
-}
-) {
-                    $shards=$Matches[1].Trim('"').Trim("'")
+                if($line -match '^\s*NIGHTCOOP_WINDOWS_SHARDS\s*=\s*(\d+)\s*$') {
+                    $shards=$Matches[1]
                 }
             }
         }
@@ -397,14 +203,14 @@ try {
     if($shards) {
         $number=0
         if(-not [int]::TryParse($shards,[ref]$number) -or $number -lt 1 -or $number -gt 16) {
-            throw 'NIGHTCOOP_WINDOWS_SHARDS must be between 1 and 16 because only UDP 47810-47824 are published.'
+            throw 'NIGHTCOOP_WINDOWS_SHARDS must be an integer from 1 to 16.'
         }
     }
 }
 function One-Click {
-    Say '==== NIGHTCOOP HOST ONE-CLICK SETUP ====' Cyan
-    Say 'This will check Docker Desktop, ask permission for two local UDP firewall rules and start the hub.' White
-    Say 'No router changes, remote PC changes or invite generation will occur.' DarkGray
+    Say '===== NIGHTCOOP ONE-CLICK HOST INSTALL =====' Cyan
+    Say 'Checks Docker, installs both local Firewall rules with UAC, starts hub, verifies UDP mapping and displays game help.' White
+    Say 'No router, remote PC or game invite will be modified.' DarkGray
     Ensure-Docker
     Check-Shards
     Install-Firewall ''
@@ -413,7 +219,7 @@ function One-Click {
     Compose @('ps')
     $published=& docker compose -f $script:Windows port hub 47800/udp 2>&1
     if($LASTEXITCODE -ne 0 -or -not $published) {
-        throw 'The hub started, but UDP port 47800 publication was not confirmed. Use the diagnostic menu.'
+        throw 'Docker UDP 47800 publication not confirmed. See diagnostic menu.'
     }
     $fingerprint=$null
     for($attempt=0;$attempt -lt 20;$attempt++) {
@@ -421,13 +227,11 @@ function One-Click {
         if($fingerprint) { break }
         Start-Sleep -Milliseconds 500
     }
-    if(-not $fingerprint) {
-        throw 'The hub did not print its signing key fingerprint. Open the log viewer for startup errors.'
-    }
-    Say 'LOCAL CHECKS PASSED: Docker running, UDP port published, hub fingerprint found.' Green
-    Say 'This does NOT prove that a second PC can reach the hub over LAN/Radmin.' Yellow
+    if(-not $fingerprint) { throw 'Hub fingerprint missing in Docker logs. Inspect the startup log.' }
+    Say 'LOCAL CHECKS PASSED: Docker, UDP publication, hub fingerprint.' Green
+    Say 'Remote LAN/Radmin reachability still needs a second-PC test.' Yellow
     Help-Addresses
-    Say 'On every guest PC, run START-WINDOWS.cmd and choose item 2 for its local firewall rules.' Cyan
+    Say 'On guest PC: run START-WINDOWS.cmd, choose item 2 to apply Firewall rules there.' Cyan
 }
 
 function Start-Hub {
