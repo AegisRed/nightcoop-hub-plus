@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Parse Windows helper without running it
-        shell: pwsh
+        shell: powershell
         run: |
           $tokens = $null
           $errors = $null
