@@ -156,6 +156,14 @@ function Refresh-DockerPath {
         if(Test-Path (Join-Path $folder 'docker.exe')) { $env:Path+=';'+$folder }
     }
 }
+function Docker-Ready {
+    try {
+        & docker info --format '{{.ServerVersion}}' *> $null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
 function Ensure-Docker {
     Refresh-DockerPath
     if(-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -175,12 +183,13 @@ function Ensure-Docker {
             throw 'Docker installed, but CLI is not available. Restart Windows, then retry.'
         }
     }
-    & docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null
-    if($LASTEXITCODE -eq 0) { return }
+    if(Docker-Ready) { return }
     Say 'Starting Docker Desktop. Accept first-run prompts if shown.' Yellow
     $started=$false
-    & docker desktop start 2>&1 | Out-Null
-    if($LASTEXITCODE -eq 0) { $started=$true }
+    try {
+        & docker desktop start *> $null
+        if($LASTEXITCODE -eq 0) { $started=$true }
+    } catch { $started=$false }
     if(-not $started) {
         foreach($exe in @(
             (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
@@ -196,8 +205,7 @@ function Ensure-Docker {
     if(-not $started) { throw 'Open Docker Desktop manually, then rerun.' }
     Say 'Waiting up to two minutes for Docker Engine...' Cyan
     for($attempt=1;$attempt -le 60;$attempt++) {
-        & docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null
-        if($LASTEXITCODE -eq 0) { Say 'Docker is ready.' Green; return }
+        if(Docker-Ready) { Say 'Docker is ready.' Green; return }
         Start-Sleep -Seconds 2
     }
     throw 'Docker Engine not ready: check WSL 2 / virtualization and first-run setup, then rerun.'
