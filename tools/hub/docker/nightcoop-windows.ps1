@@ -1,7 +1,7 @@
 ﻿#Requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('menu','firewall')] [string]$Action='menu',
+    [ValidateSet('menu','firewall','remove')] [string]$Action='menu',
     [string]$PeerIPs=''
 )
 $ErrorActionPreference='Stop'
@@ -65,6 +65,20 @@ function Install-Firewall([string]$Peers) {
     New-NetFirewallRule @lan | Out-Null
     Say 'Both UDP rules are installed on this PC.' Green
     Say 'Repeat item 2 locally on your second PC; this tool never edits a remote PC.' Yellow
+}
+function Remove-Firewall {
+    if(-not (Is-Admin)) {
+        Say 'Requesting administrator approval (UAC) to remove helper rules...' Yellow
+        $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$PSCommandPath+'" -Action remove'
+        $child=Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -Verb RunAs -Wait -PassThru
+        if($child.ExitCode -ne 0) { throw 'Firewall cleanup failed or UAC was declined.' }
+        return
+    }
+    foreach($name in @($script:HubRule,$script:LanRule)) {
+        $old=Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue
+        if($old) { $old | Remove-NetFirewallRule }
+    }
+    Say 'Helper-created firewall rules removed. Manual rules were not changed.' Green
 }
 function Compose([string[]]$Subargs) {
     if(-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -131,6 +145,11 @@ function Start-Hub {
     Compose @('up','-d','--build')
     Say 'Hub started:' Green
     Compose @('ps')
+    # The first-start key and its fingerprint can appear a moment after 'up -d'.
+    for($attempt=0;$attempt -lt 12;$attempt++) {
+        if(Fingerprint) { break }
+        Start-Sleep -Milliseconds 500
+    }
     Help-Addresses
 }
 function Diagnostics {
@@ -173,6 +192,7 @@ function Menu {
         Say '4. Live logs (Ctrl+C to exit)' White
         Say '5. Export troubleshooting log' White
         Say '6. Stop hub (preserve signing key)' White
+        Say '7. Remove the two helper-created Firewall rules' White
         Say '0. Exit' Gray
         $choice=Read-Host 'Choose'
         try {
@@ -186,6 +206,7 @@ function Menu {
                 '4' { Compose @('logs','--tail','100','-f','hub') }
                 '5' { Diagnostics }
                 '6' { Compose @('stop','hub'); Say 'Stopped; key volume preserved.' Green }
+                '7' { Remove-Firewall }
                 '0' { return }
                 default { Say 'Unknown menu item.' Yellow }
             }
@@ -196,6 +217,7 @@ function Menu {
 }
 try {
     if($Action -eq 'firewall') { Install-Firewall $PeerIPs }
+    elseif($Action -eq 'remove') { Remove-Firewall }
     else { Menu }
 } catch {
     Say ('ERROR: '+$_.Exception.Message) Red
