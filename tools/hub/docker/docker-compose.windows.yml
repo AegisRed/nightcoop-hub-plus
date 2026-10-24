@@ -1,13 +1,15 @@
-# Windows / Docker Desktop LAN and Radmin VPN profile.
-# Use together with docker-compose.yml:
-# docker compose -f docker-compose.yml -f docker-compose.windows.yml up -d --build
-#
-# Docker Desktop cannot use host networking together with published ports.
-# These fixed mappings support up to 16 total shards (entry + 15 redirect ports).
-# NIGHTCOOP_WINDOWS_SHARDS must be between 1 and 16 (default: 4).
+# Windows / Docker Desktop: standalone Compose file.
+# No network_mode: Docker Compose uses its default bridge network.
+# Start: docker compose -f docker-compose.windows.yml up -d --build
+# Port 47800 is fixed; NIGHTCOOP_WINDOWS_SHARDS must be 1..16.
 services:
   hub:
-    network_mode: bridge
+    image: ${NIGHTCOOP_IMAGE:-nightcoop-hub:local}
+    build:
+      context: ../../..
+      dockerfile: tools/hub/docker/Dockerfile
+    container_name: nightcoop-hub
+    restart: unless-stopped
     ports:
       - "47800:47800/udp"
       - "47810-47824:47810-47824/udp"
@@ -19,3 +21,22 @@ services:
       --hub-name ${NIGHTCOOP_HUB_NAME:-localhost}
       --region ${NIGHTCOOP_REGION:-home}
       ${NIGHTCOOP_EXTRA_ARGS:-}
+    volumes:
+      - hub-data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 128
+    ulimits:
+      nofile: 4096
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  hub-data:
+    name: nightcoop-hub-data
