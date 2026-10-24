@@ -9,7 +9,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\nightcoop-windows.ps1
 ~~~
 
 1. **On the host:** use `INSTALL-WINDOWS.cmd` (or management menu item 1). Approve any necessary Docker installation/first-run/UAC prompts. The helper starts the hub and prints its fingerprint plus colored localhost/LAN/Radmin examples.
-2. **On the second PC:** Docker is not needed unless that PC also hosts a hub. Run the same script and select **2** to install the two Firewall rules **on that PC**. The script cannot remotely change another computer.
+2. **On the second PC:** Docker is not needed unless that PC also hosts a hub. Double-click **`INSTALL-GUEST-WINDOWS.cmd`** to install the two Firewall rules **on that PC** (UAC, no Docker). For optional exact Radmin peer addresses use `START-WINDOWS.cmd` → item **2**. The script cannot remotely change another computer.
 3. **In the game:** host enters `127.0.0.1#FINGERPRINT` when adding the own server. Guests use the real session invite from Cyberpunk but replace only the host address between `@` and `#` with the **host's LAN IPv4** or **host's Radmin VPN IPv4**. Keep the session code and fingerprint unchanged. Examples shown in the console are examples, not generated invites.
 
 The standalone Windows Compose file has **no `network_mode` field** and publishes `47800/udp` and `47810-47824/udp`. It defaults to four shards. Set `NIGHTCOOP_WINDOWS_SHARDS` to 1–16 if necessary; 47800 is fixed for this profile. The original Linux Compose file remains unchanged. Run Windows with `docker compose -f docker-compose.windows.yml up -d --build`.
