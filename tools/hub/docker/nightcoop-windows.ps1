@@ -231,7 +231,7 @@ function One-Click {
     Say 'LOCAL CHECKS PASSED: Docker, UDP publication, hub fingerprint.' Green
     Say 'Remote LAN/Radmin reachability still needs a second-PC test.' Yellow
     Help-Addresses
-    Say 'On guest PC: run START-WINDOWS.cmd, choose item 2 to apply Firewall rules there.' Cyan
+    Say 'On guest PC: double-click INSTALL-GUEST-WINDOWS.cmd to apply its local Firewall rules (no Docker).' Cyan
 }
 
 function Start-Hub {
