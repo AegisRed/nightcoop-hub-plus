@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NightCoop — локальная панель хаба</title>
+<style>
+:root{color-scheme:dark;--bg:#080e19;--panel:#111c2c;--panel2:#15243a;--line:#26384f;--text:#e9f4ff;--muted:#97adc5;--cyan:#62e0f0;--green:#65e2ac;--amber:#ffcb71;--red:#ff7d8a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% -18%,#17375a 0,transparent 39%),radial-gradient(circle at 99% 2%,#193847 0,transparent 28%),var(--bg);color:var(--text);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:1160px;margin:0 auto;padding:36px 24px 80px}
+.top{display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:26px}
+.logo{display:flex;align-items:center;gap:16px}.mark{width:54px;height:54px;display:grid;place-items:center;border:1px solid #397889;border-radius:15px;background:#153346;font-size:27px;font-weight:900;color:var(--cyan);box-shadow:0 0 35px #0f96b326}
+.kicker{font-size:11px;letter-spacing:2px;color:var(--cyan);font-weight:800}h1{font-size:31px;line-height:1.1;margin:4px 0 0;letter-spacing:-1px}h2{font-size:17px;margin:0 0 4px}p{margin:0;color:var(--muted)}
+.local{display:flex;gap:8px;align-items:center;border:1px solid #315466;background:#122936;border-radius:100px;padding:9px 14px;color:#bfe7ee;font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #65e2ac99}.dot.off{background:var(--red);box-shadow:0 0 12px #ff7d8a88}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:21px}
+.panel{background:linear-gradient(155deg,#142137,#101a2a);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 35px #0002}
+.stat{padding:18px}.label{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;font-weight:800;color:var(--muted)}.value{font-size:22px;font-weight:750;margin-top:5px;word-break:break-word}.value.good{color:var(--green)}.value.bad{color:var(--red)}.value.warn{color:var(--amber)}
+.info{display:flex;align-items:flex-start;gap:12px;padding:15px 18px;margin-bottom:23px;background:#102d39;border-color:#2a6071}.info span{font-size:21px}.info p{font-size:13px}
+.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:29px 0 13px}.sectionhead small{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.card{padding:22px;display:flex;flex-direction:column;gap:14px;min-width:0}.tag{font-size:11px;letter-spacing:.8px;font-weight:850;color:var(--cyan)}.muted{font-size:12px;color:var(--muted)}.fieldlabel{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px}
+input{width:100%;height:39px;background:#0c1728;border:1px solid #38506a;border-radius:10px;padding:0 12px;font:14px "Cascadia Code",Consolas,monospace;color:var(--text);outline:none}
+input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px #62e0f021}
+.code{background:#081524;border:1px solid #293e55;border-radius:11px;padding:12px;font:12px/1.55 Consolas,"Cascadia Code",monospace;color:#dbf8ff;overflow-wrap:anywhere;min-height:47px}
+button{cursor:pointer;border:1px solid #3a6074;border-radius:10px;background:#17394a;color:#c3f5fa;padding:10px 14px;font-weight:750;font-family:inherit;transition:.15s}
+button:hover:not(:disabled){background:#235267;border-color:var(--cyan)}button:disabled{opacity:.43;cursor:not-allowed}
+button.primary{background:#1a5968;color:#eeffff;border-color:#3a99a8}button.ghost{background:#132239;border-color:#31506b;color:#aacee0}
+.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.card .buttons{display:flex;gap:8px}.buttons button{flex:1;font-size:12px}
+.compact{padding:14px 18px}.editbox{display:flex;align-items:center;gap:17px}.editbox>div{flex:1}
+.loghead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.loghead h2{margin-right:auto}.loghead button{padding:7px 11px;font-size:12px}
+pre{margin:0;background:#080f1b;border:1px solid #263950;border-radius:12px;color:#bed1e7;font:12px/1.65 Consolas,"Cascadia Code",monospace;white-space:pre-wrap;word-break:break-word;max-height:440px;overflow:auto;padding:18px}
+.logwrap{padding:17px}.notice{border-left:3px solid var(--amber);background:#1e2836;padding:11px 15px;font-size:12px;color:#d6c6a7;margin-top:17px;border-radius:7px}
+.issue-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin:16px 0}
+.issue{border:1px solid #735443;background:#302638;border-radius:12px;padding:13px 15px}
+.issue strong{display:block;color:var(--amber);margin-bottom:4px;font-size:13px}
+.issue p{font-size:12px;color:#d0bfb5}
+.footer{font-size:12px;color:#7996b2;margin-top:28px}
+#toast{position:fixed;bottom:24px;right:24px;background:#276d60;color:white;padding:10px 16px;border-radius:9px;box-shadow:0 10px 28px #0008;opacity:0;pointer-events:none;transition:.2s}
+@media(max-width:920px){.stats{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}.card{min-height:auto}}
+@media(max-width:570px){main{padding:22px 13px 50px}.stats{gap:8px}.stat{padding:14px}.value{font-size:18px}h1{font-size:26px}.editbox{display:block}.editbox input{margin-top:9px}.top{align-items:flex-start}}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+  <div class="logo"><div class="mark">N</div><div><div class="kicker">PRIVATE HUB · LOCAL CONTROL</div><h1>NightCoop <span style="color:#62e0f0">Hub</span></h1></div></div>
+  <div class="local"><i class="dot" id="live-dot"></i><span>Только 127.0.0.1 · панель не доступна друзьям</span></div>
+</header>
+
+<section class="stats" aria-label="Статус">
+  <div class="panel stat"><div class="label">Хаб</div><div class="value" id="hub-status">Проверяю…</div></div>
+  <div class="panel stat"><div class="label">UDP 47800</div><div class="value" id="udp-status">—</div></div>
+  <div class="panel stat"><div class="label">Firewall</div><div class="value" id="firewall-status">—</div></div>
+  <div class="panel stat"><div class="label">Отпечаток</div><div class="value" id="fingerprint" style="font-size:15px;letter-spacing:.4px">—</div></div>
+</section>
+
+<div class="panel info"><span>ⓘ</span><p id="state-note">Эта панель читает состояние Docker и последние логи, но не меняет игровые файлы и не создаёт коды сессий. Сначала запустите NightCoop Hub.</p></div>
+<div id="issues" class="issue-grid" aria-live="polite"></div>
+
+<div class="sectionhead"><div><h2>Адреса для подключения</h2><p>Здесь показан адрес <strong>хоста</strong>. Друзья не должны использовать 127.0.0.1.</p></div></div>
+<section class="cards">
+  <article class="panel card">
+    <div><div class="tag">01 · ИГРА НА ЭТОМ ПК</div><h2>Для хоста</h2><p class="muted">«Сервер» → «Добавить свой сервер»</p></div>
+    <div><label class="fieldlabel">Адрес сервера</label><div class="code" id="host-server">Ожидание отпечатка…</div></div>
+    <div class="buttons"><button class="primary" id="copy-host" disabled>Скопировать сервер</button></div>
+    <p class="muted">Петлевой адрес действует только на этом компьютере.</p>
+  </article>
+  <article class="panel card">
+    <div><div class="tag">02 · ОДНА ДОМАШНЯЯ СЕТЬ</div><h2>Друг по LAN</h2><p class="muted">Wi-Fi или Ethernet одного роутера</p></div>
+    <div><label class="fieldlabel" for="lan-ip">LAN IPv4 хоста</label><input id="lan-ip" placeholder="192.168.1.100" spellcheck="false" autocomplete="off"></div>
+    <div><label class="fieldlabel">Сервер</label><div class="code" id="lan-server">—</div></div>
+    <div><label class="fieldlabel">Приглашение</label><div class="code" id="lan-invite">Введите код сессии ниже</div></div>
+    <div class="buttons"><button id="copy-lan-server" disabled>Сервер</button><button class="primary" id="copy-lan-invite" disabled>Инвайт</button></div>
+  </article>
+  <article class="panel card">
+    <div><div class="tag">03 · ВИРТУАЛЬНАЯ СЕТЬ</div><h2>Друг через Radmin VPN</h2><p class="muted">Оба в одной VPN-сети Radmin</p></div>
+    <div><label class="fieldlabel" for="vpn-ip">Radmin IPv4 хоста</label><input id="vpn-ip" placeholder="26.x.x.x" spellcheck="false" autocomplete="off"></div>
+    <div><label class="fieldlabel">Сервер</label><div class="code" id="vpn-server">—</div></div>
+    <div><label class="fieldlabel">Приглашение</label><div class="code" id="vpn-invite">Введите код сессии ниже</div></div>
+    <div class="buttons"><button id="copy-vpn-server" disabled>Сервер</button><button class="primary" id="copy-vpn-invite" disabled>Инвайт</button></div>
+  </article>
+</section>
+
+<div class="panel compact" style="margin-top:14px">
+  <div class="editbox">
+    <div><h2>Код сессии из игры</h2><p class="muted">Вставьте 6 символов или целое приглашение из NightCoop. Код не отправляется серверу панели и не сохраняется.</p></div>
+    <input id="session" maxlength="150" style="max-width:340px" placeholder="Например J3E5ZE" spellcheck="false" autocomplete="off">
+  </div>
+  <div class="notice">Пример в интерфейсе не является действительным инвайтом. Сначала создайте сессию в игре. Отпечаток после # и код перед @ должны остаться неизменными; меняется только адрес хоста.</div>
+</div>
+
+<div class="sectionhead"><div><h2>Журнал и ошибки хаба</h2><p>Последние 250 строк Docker; данные игроков и установленные моды здесь не видны.</p></div><small id="updated">—</small></div>
+<section class="panel logwrap">
+  <div class="loghead" style="margin-bottom:12px">
+    <button id="filter-all" class="primary">Все сообщения</button>
+    <button id="filter-errors" class="ghost">Ошибки / предупреждения</button>
+    <button id="copy-logs" class="ghost">Скопировать логи</button>
+    <button id="refresh" class="ghost">Обновить</button>
+    <span id="error-count" class="muted">—</span>
+  </div>
+  <pre id="logs" aria-live="polite">Получаю журнал Docker…</pre>
+  <div class="notice">Если у гостей конфликтуют REDmod/CET/RED4ext/ArchiveXL и другие моды, хаб этого не увидит: игровые сообщения зашифрованы между клиентами. Для сверки модов потребуется функция в самом NightCoop-моде.</div>
+</section>
+<div class="footer">Локальная панель только для просмотра · <span id="endpoint">127.0.0.1</span> · NightCoop signing key никогда не передаётся в браузер</div>
+</main>
+<div id="toast" role="status"></div>
+<script>
+'use strict';
+const ui = id => document.getElementById(id);
+const state = { fingerprint:'', lanTouched:false, vpnTouched:false, logText:'', filter:'all', values:{} };
+const warnPattern = /(?:^|\s)(?:!|error|failed|failure|refus|reject|mismatch|timeout|cannot bind|warning|invalid key)/i;
+function validIPv4(v) {
+  const parts=v.trim().split('.');
+  return parts.length===4 && parts.every(p=>/^\d{1,3}$/.test(p) && Number(p)<=255) && !['0','127','169'].includes(parts[0]);
+}
+function sessionCode() {
+  const value=ui('session').value.trim().toUpperCase();
+  const match=/^([A-Z0-9]{6})(?:@[^#\s]+(?:#[A-Z0-9-]+)?)?$/.exec(value);
+  return match ? match[1] : '';
+}
+function showToast(message) {
+  const el=ui('toast'); el.textContent=message; el.style.opacity='1';
+  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>{el.style.opacity='0'},2200);
+}
+async function copyText(text) {
+  if(!text) return;
+  try { await navigator.clipboard.writeText(text); showToast('Скопировано'); }
+  catch {
+    const el=document.createElement('textarea'); el.value=text; el.style.position='fixed'; el.style.opacity='0';
+    document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove(); showToast('Скопировано');
+  }
+}
+function setCopy(id,value) {
+  state.values[id]=value || '';
+  ui(id).disabled=!value;
+}
+function renderAddresses() {
+  const fp=state.fingerprint;
+  const code=sessionCode();
+  const host=fp ? '127.0.0.1#'+fp : 'Нет отпечатка';
+  ui('host-server').textContent=host;
+  setCopy('copy-host',fp ? host : '');
+  for(const [prefix,inputId] of [['lan','lan-ip'],['vpn','vpn-ip']]) {
+    const ip=ui(inputId).value.trim();
+    const good=fp && validIPv4(ip);
+    const server=good ? ip+'#'+fp : 'Укажите IP хоста';
+    const invite=good && code ? code+'@'+ip+'#'+fp : 'Нужен настоящий код сессии из игры';
+    ui(prefix+'-server').textContent=server;
+    ui(prefix+'-invite').textContent=invite;
+    setCopy('copy-'+prefix+'-server',good ? server : '');
+    setCopy('copy-'+prefix+'-invite',good && code ? invite : '');
+  }
+}
+function renderDiagnosis(s) {
+  const found=[];
+  const add=(title,detail)=>{if(!found.some(x=>x.title===title))found.push({title,detail})};
+  if(!s.running) add('Хаб не запущен','Запустите INSTALL-WINDOWS.cmd или пункт 1 консольного меню.');
+  if(s.running&&!s.udpPublished) add('UDP 47800 не опубликован','Проверьте Docker Compose и занят ли порт другим процессом.');
+  if(s.firewall&&(!s.firewall.hub||!s.firewall.lan)) add('Не все правила Firewall установлены','На ПК хоста запустите установщик или пункт 2 меню.');
+  const text=state.logText.toLowerCase();
+  if(/protocol mismatch|guest has game protocol/.test(text))
+    add('Версии NightCoop не совпадают','Хост и гость используют разные версии игрового протокола. Сверьте сборки NightCoop на обоих ПК.');
+  if(/unknown session|no such session/.test(text))
+    add('Неизвестный код сессии','Проверьте настоящий код из игры, отпечаток и адрес нужного хаба.');
+  if(/cannot bind port|address already in use/.test(text))
+    add('Порт занят','Возможно, уже запущен другой хаб или процесс на том же UDP-порту.');
+  if(/session is full|hub is full/.test(text))
+    add('Лимит подключений','Сессия или хаб переполнены; проверьте количество игроков и настройки лимитов.');
+  const area=ui('issues'); area.replaceChildren();
+  for(const x of found.slice(0,6)){
+    const card=document.createElement('div'); card.className='issue';
+    const title=document.createElement('strong'); title.textContent=x.title;
+    const detail=document.createElement('p'); detail.textContent=x.detail;
+    card.append(title,detail);area.appendChild(card);
+  }
+}
+
+function renderLogs() {
+  const rows=state.logText.split(/\r?\n/);
+  const errors=rows.filter(x=>warnPattern.test(x));
+  ui('error-count').textContent=errors.length+' строк с возможными ошибками';
+  const visible=state.filter==='errors' ? errors : rows;
+  ui('logs').textContent=visible.filter(Boolean).join('\n') || (state.filter==='errors' ? 'Предупреждений в последних строках нет.' : 'Лог пока пуст.');
+  ui('filter-all').className=state.filter==='all'?'primary':'ghost';
+  ui('filter-errors').className=state.filter==='errors'?'primary':'ghost';
+}
+async function refresh() {
+  try {
+    const responses=await Promise.all([fetch('/api/status',{cache:'no-store'}),fetch('/api/logs',{cache:'no-store'})]);
+    if(responses.some(r=>!r.ok)) throw new Error('HTTP response: '+responses.map(r=>r.status).join('/'));
+    const [s,l]=await Promise.all(responses.map(r=>r.json()));
+    state.fingerprint=s.fingerprint || '';
+    state.logText=typeof l.text==='string' ? l.text : '';
+    ui('hub-status').textContent=s.running?'Запущен':'Не запущен';
+    ui('hub-status').className='value '+(s.running?'good':'bad');
+    ui('udp-status').textContent=s.udpPublished?'Опубликован':'Нет проброса';
+    ui('udp-status').className='value '+(s.udpPublished?'good':'bad');
+    const count=Number(Boolean(s.firewall&&s.firewall.hub))+Number(Boolean(s.firewall&&s.firewall.lan));
+    ui('firewall-status').textContent=count+'/2 правила';
+    ui('firewall-status').className='value '+(count===2?'good':'warn');
+    ui('fingerprint').textContent=state.fingerprint||'Ожидание ключа';
+    ui('live-dot').className='dot'+(s.running?'':' off');
+    ui('state-note').textContent=s.error || 'Хаб работает локально. Это не доказывает, что другой ПК достигает его через LAN или Radmin VPN.';
+    if(!state.lanTouched && s.lan && s.lan.length) ui('lan-ip').value=s.lan[0].ip;
+    if(!state.vpnTouched && s.radmin && s.radmin.length) ui('vpn-ip').value=s.radmin[0].ip;
+    ui('updated').textContent='Обновлено '+new Date().toLocaleTimeString('ru-RU');
+    renderAddresses(); renderLogs(); renderDiagnosis(s);
+  } catch(err) {
+    ui('hub-status').textContent='Нет связи';
+    ui('hub-status').className='value bad';
+    ui('live-dot').className='dot off';
+    ui('state-note').textContent='Локальный сервис панели недоступен: '+err.message;
+    ui('logs').textContent='Не удалось прочитать Docker: '+err.message;
+  }
+}
+for(const [name,input] of [['lanTouched','lan-ip'],['vpnTouched','vpn-ip']]) {
+  ui(input).addEventListener('input',()=>{state[name]=true;renderAddresses()});
+}
+ui('session').addEventListener('input',renderAddresses);
+for(const id of ['copy-host','copy-lan-server','copy-lan-invite','copy-vpn-server','copy-vpn-invite']) {
+  ui(id).addEventListener('click',()=>copyText(state.values[id]));
+}
+ui('filter-all').addEventListener('click',()=>{state.filter='all';renderLogs()});
+ui('filter-errors').addEventListener('click',()=>{state.filter='errors';renderLogs()});
+ui('copy-logs').addEventListener('click',()=>copyText(state.filter==='errors' ? state.logText.split(/\r?\n/).filter(x=>warnPattern.test(x)).join('\n') : state.logText));
+ui('refresh').addEventListener('click',refresh);
+ui('endpoint').textContent=location.host;
+refresh();
+setInterval(refresh,6000);
+</script>
+</body>
+</html>

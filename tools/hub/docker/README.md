@@ -1,5 +1,10 @@
 # Your own NightCoop hub
 
+> **Windows with Docker Desktop, LAN or Radmin VPN?** Use the
+> [Windows guide](README.windows.md) ([Russian](README.windows.ru.md)) and
+> `nightcoop-windows.ps1` for UDP publishing, approved Firewall setup and LAN/VPN
+> address examples. The instructions below target Linux/VPS host networking.
+
 *Русская версия — [README.ru.md](README.ru.md).*
 
 NightCoop players find each other through a **hub**: a small server that hands out session codes, tells each player how the
