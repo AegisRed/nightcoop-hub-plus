@@ -8,9 +8,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\nightcoop-windows.ps1
 
 1. **On the host:** start Docker Desktop; select menu item **1**. Approve installation of the two Windows Defender Firewall rules (UAC). Optionally enter the other player's Radmin VPN IPv4 to allow it explicitly. The helper starts the hub and prints its fingerprint plus colored localhost/LAN/Radmin examples.
 2. **On the second PC:** Docker is not needed unless that PC also hosts a hub. Run the same script and select **2** to install the two Firewall rules **on that PC**. The script cannot remotely change another computer.
-3. **In the game:** host enters \`127.0.0.1#FINGERPRINT\` when adding the own server. Guests use the real session invite from Cyberpunk but replace only the host address between \`@\` and \`#\` with the **host's LAN IPv4** or **host's Radmin VPN IPv4**. Keep the session code and fingerprint unchanged. Examples shown in the console are examples, not generated invites.
+3. **In the game:** host enters `127.0.0.1#FINGERPRINT` when adding the own server. Guests use the real session invite from Cyberpunk but replace only the host address between `@` and `#` with the **host's LAN IPv4** or **host's Radmin VPN IPv4**. Keep the session code and fingerprint unchanged. Examples shown in the console are examples, not generated invites.
 
-The Windows Compose overlay **replaces** \`network_mode: host\` with \`bridge\`, and publishes \`47800/udp\` and \`47810-47824/udp\`. It defaults to four shards. Set \`NIGHTCOOP_WINDOWS_SHARDS\` to 1–16 if necessary; 47800 is fixed for this profile. The original Linux Compose file remains unchanged.
+The Windows Compose overlay **replaces** `network_mode: host` with `bridge`, and publishes `47800/udp` and `47810-47824/udp`. It defaults to four shards. Set `NIGHTCOOP_WINDOWS_SHARDS` to 1–16 if necessary; 47800 is fixed for this profile. The original Linux Compose file remains unchanged.
 
 The installer creates:
 - **NightCoop Hub UDP (managed)**: inbound UDP 47800,47810–47873 on Private networks.
