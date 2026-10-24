@@ -19,19 +19,49 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            'tools/hub/docker/nightcoop-windows.ps1',
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.ToString() }
-            exit 1
+          foreach ($scriptPath in @('tools/hub/docker/nightcoop-windows.ps1', 'tools/hub/docker/dashboard.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $scriptPath,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              exit 1
+            }
+          }
+      - name: Smoke-test loopback dashboard HTTP routes
+        shell: powershell
+        run: |
+          $proc = Start-Process powershell.exe -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File tools/hub/docker/dashboard.ps1 -Port 47990' -PassThru -WindowStyle Hidden
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 20; $i++) {
+              Start-Sleep -Milliseconds 400
+              try {
+                $health = Invoke-WebRequest http://127.0.0.1:47990/health -UseBasicParsing -TimeoutSec 2
+                if ($health.Content.Trim() -eq 'NightCoop Dashboard') { $ready = $true; break }
+              } catch {}
+            }
+            if (-not $ready) { throw 'Dashboard did not start on loopback' }
+            $page = Invoke-WebRequest http://127.0.0.1:47990/ -UseBasicParsing
+            if ($page.Content -notmatch 'NightCoop') { throw 'Dashboard HTML missing' }
+            $status = Invoke-RestMethod http://127.0.0.1:47990/api/status
+            if ($null -eq $status.running) { throw 'Status JSON missing running flag' }
+            $logs = Invoke-RestMethod http://127.0.0.1:47990/api/logs
+            if ($null -eq $logs.success) { throw 'Logs JSON missing success flag' }
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
           }
   docker-compose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check dashboard inline JavaScript syntax
+        run: |
+          node -e "const fs=require('fs');const h=fs.readFileSync('tools/hub/docker/dashboard.html','utf8');const start=h.indexOf('<script>');const end=h.indexOf('</script>',start);if(start<0||end<0)throw Error('Missing dashboard script');new Function(h.slice(start+8,end));"
       - name: Validate Windows Docker Compose overlay
         run: |
           docker compose -f tools/hub/docker/docker-compose.windows.yml config --quiet
