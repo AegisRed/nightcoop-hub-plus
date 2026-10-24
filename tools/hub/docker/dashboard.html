@@ -108,7 +108,7 @@ const state = { fingerprint:'', lanTouched:false, vpnTouched:false, logText:'', 
 const warnPattern = /(?:^|\s)(?:!|error|failed|failure|refus|reject|mismatch|timeout|cannot bind|warning|invalid key)/i;
 function validIPv4(v) {
   const parts=v.trim().split('.');
-  return parts.length===4 && parts.every(p=>/^\d{1,3}$/.test(p) && Number(p)<=255);
+  return parts.length===4 && parts.every(p=>/^\d{1,3}$/.test(p) && Number(p)<=255) && !['0','127','169'].includes(parts[0]);
 }
 function sessionCode() {
   const value=ui('session').value.trim().toUpperCase();
@@ -163,7 +163,7 @@ async function refresh() {
     if(responses.some(r=>!r.ok)) throw new Error('HTTP response: '+responses.map(r=>r.status).join('/'));
     const [s,l]=await Promise.all(responses.map(r=>r.json()));
     state.fingerprint=s.fingerprint || '';
-    state.logText=l.text || l.success===false ? (l.text||'') : '';
+    state.logText=typeof l.text==='string' ? l.text : '';
     ui('hub-status').textContent=s.running?'Запущен':'Не запущен';
     ui('hub-status').className='value '+(s.running?'good':'bad');
     ui('udp-status').textContent=s.udpPublished?'Опубликован':'Нет проброса';
