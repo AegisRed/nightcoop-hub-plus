@@ -229,6 +229,68 @@ function Check-Shards {
         }
     }
 }
+function Dashboard-Healthy {
+    try {
+        $response=Invoke-WebRequest -Uri 'http://127.0.0.1:47990/health' -UseBasicParsing -TimeoutSec 2
+        return ($response.StatusCode -eq 200 -and $response.Content.Trim() -eq 'NightCoop Dashboard')
+    } catch { return $false }
+}
+function Dashboard-PortBusy {
+    $socket=New-Object Net.Sockets.TcpClient
+    try {
+        $socket.Connect('127.0.0.1',47990)
+        return $true
+    } catch { return $false }
+    finally { $socket.Dispose() }
+}
+function Dashboard-PidFile {
+    $folder=Join-Path $env:LOCALAPPDATA 'NightCoop'
+    if(-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
+    return (Join-Path $folder 'dashboard.pid')
+}
+function Start-Dashboard {
+    $uri='http://127.0.0.1:47990/'
+    if(Dashboard-Healthy) {
+        Say ('Local dashboard already running: '+$uri) Green
+        Start-Process $uri
+        return
+    }
+    if(Dashboard-PortBusy) { throw 'Port 47990 is occupied by another application; dashboard not started.' }
+    $file=Join-Path $PSScriptRoot 'dashboard.ps1'
+    if(-not (Test-Path $file)) { throw 'dashboard.ps1 is missing; redownload the repository.' }
+    $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$file+'" -Port 47990'
+    $process=Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WindowStyle Hidden -PassThru
+    $healthy=$false
+    for($i=0;$i -lt 20;$i++) {
+        if(Dashboard-Healthy) { $healthy=$true; break }
+        if($process.HasExited) { break }
+        Start-Sleep -Milliseconds 350
+    }
+    if(-not $healthy) {
+        throw 'Local dashboard did not start. Check Windows security software or port 47990.'
+    }
+    [string]$process.Id | Set-Content -LiteralPath (Dashboard-PidFile) -Encoding ASCII
+    Say ('Local read-only dashboard: '+$uri) Green
+    Start-Process $uri
+}
+function Stop-Dashboard {
+    $file=Dashboard-PidFile
+    if(-not (Test-Path $file)) { Say 'No managed dashboard process recorded.' Yellow; return }
+    $pidValue=0
+    if(-not [int]::TryParse((Get-Content -LiteralPath $file -Raw).Trim(),[ref]$pidValue)) {
+        throw 'Dashboard PID file is invalid; no process was stopped.'
+    }
+    $process=Get-CimInstance Win32_Process -Filter ("ProcessId="+$pidValue) -ErrorAction SilentlyContinue
+    $expected=Join-Path $PSScriptRoot 'dashboard.ps1'
+    if($process -and [string]$process.CommandLine -like ('*'+$expected+'*')) {
+        Stop-Process -Id $pidValue -ErrorAction Stop
+        Say 'Local dashboard stopped. Hub stays running.' Green
+    } else {
+        Say 'Dashboard process is not running or PID was reused; nothing stopped.' Yellow
+    }
+    Remove-Item -LiteralPath $file -ErrorAction SilentlyContinue
+}
+
 function One-Click {
     Say '===== NIGHTCOOP ONE-CLICK HOST INSTALL =====' Cyan
     Say 'Checks Docker, installs both local Firewall rules with UAC, starts hub, verifies UDP mapping and displays game help.' White
@@ -253,6 +315,7 @@ function One-Click {
     Say 'LOCAL CHECKS PASSED: Docker, UDP publication, hub fingerprint.' Green
     Say 'Remote LAN/Radmin reachability still needs a second-PC test.' Yellow
     Help-Addresses
+    try { Start-Dashboard } catch { Say ('Dashboard warning: '+$_.Exception.Message) Yellow }
     Say 'On guest PC: double-click INSTALL-GUEST-WINDOWS.cmd to apply its local Firewall rules (no Docker).' Cyan
 }
 
@@ -275,6 +338,7 @@ function Start-Hub {
         Start-Sleep -Milliseconds 500
     }
     Help-Addresses
+    try { Start-Dashboard } catch { Say ('Dashboard warning: '+$_.Exception.Message) Yellow }
 }
 function Diagnostics {
     $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -317,6 +381,8 @@ function Menu {
         Say '5. Export troubleshooting log' White
         Say '6. Stop hub (preserve signing key)' White
         Say '7. Remove the two helper-created Firewall rules' White
+        Say '8. Open local browser dashboard (127.0.0.1:47990)' White
+        Say '9. Stop local dashboard only' White
         Say '0. Exit' Gray
         $choice=Read-Host 'Choose'
         try {
@@ -331,6 +397,8 @@ function Menu {
                 '5' { Diagnostics }
                 '6' { Compose @('stop','hub'); Say 'Stopped; key volume preserved.' Green }
                 '7' { Remove-Firewall }
+                '8' { Start-Dashboard }
+                '9' { Stop-Dashboard }
                 '0' { return }
                 default { Say 'Unknown menu item.' Yellow }
             }
